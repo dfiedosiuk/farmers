@@ -1,0 +1,105 @@
+= Farmers
+:toc:
+
+App is loading data from files to Array[Array]. With collected tables farmersData and pricesData I would found requested data using pattern matching mainly. In Instrution I described steps to run app on Minikube.
+
+== Dependencies
+* Java 8+
+* Scala 2.12+
+Needed tools: Docker, Minikube
+
+Specific dependencies in file _build.sbt_
+
+== Instruction
+
+=== Clone repository
+
+=== Start minikube
+IMPORTANT: Open Docker
+
+Start cluster
+[source]
+minikube start
+
+Cluster Info (optional)
+[source]
+kubectl cluster-info
+kubectl config view
+
+Pod Info (optional)
+[source]
+kubectl get po -A
+
+Point the shell to minikube's Docker daemon
+[source]
+eval $(minikube -p minikube docker-env)
+
+Co to app directory and create app image on minikube
+[source]
+sbt docker
+
+Check images on minikube
+[source]
+docker images
+
+
+Create required Kubernetes resources to run a Spark application.
+[source]
+kubectl create ns spark-demo
+
+[source]
+kubectl create serviceaccount spark -n spark-demo
+
+[source]
+kubectl create clusterrolebinding spark-role \
+  --clusterrole edit \
+  --serviceaccount spark-demo:spark \
+  -n spark-demo
+
+Setting up environment variables
+[source]
+K8S_SERVER=$(kubectl config view --output=jsonpath='{.clusters[].cluster.server}')
+
+Check image name on minikube
+[source]
+docker images
+
+Set environment variables
+[source]
+export POD_NAME=spark-app
+export IMAGE_NAME=???
+
+Run APP
+[source]
+./bin/spark-submit \
+  --master k8s://$K8S_SERVER \
+  --deploy-mode cluster \
+  --name $POD_NAME \
+  --class Main??? \
+  --conf spark.kubernetes.container.image=$IMAGE_NAME \
+  --conf spark.kubernetes.driver.pod.name=$POD_NAME \
+  --conf spark.kubernetes.context=minikube \
+  --conf spark.kubernetes.namespace=spark-demo \
+  --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
+  --verbose \
+  local:///[JAR DIR in Dockerfile ???] STOP_THE_SPARKCONTEXT
+
+== Closing minikube
+
+Clean Up
+[source]
+minikube stop
+
+Full Clean Up +
+[.small]#Delete all of the minikube clusters.#
+[source]
+minikube delete --all --purge
+
+Remove minikube's Docker images (local!)
+[source]
+docker rmi $(docker image ls 'gcr.io/k8s-minikube/*' -q)
+docker image prune --force
+
+
+
+
